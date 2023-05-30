@@ -1,0 +1,17 @@
+{
+    "files.associations": {
+        "stdio.h": "c",
+        "main.h": "c",
+        "stdint.h": "c",
+        "stm32h7xx_hal.h": "c",
+        "string.h": "c",
+        "system_stm32h7xx.h": "c",
+        "stm32h7xx_hal_conf.h": "c",
+        "stm32h7b0xx.h": "c",
+        "stdarg.h": "c",
+        "cooling_modbus_protocol.h": "c",
+        "vscodeissuesresolve.h": "c",
+        "stm32h7xx_it.h": "c",
+        "irq_ctrl.h": "c"
+    }
+}
