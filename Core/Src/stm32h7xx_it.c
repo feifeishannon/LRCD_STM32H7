@@ -187,7 +187,12 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-
+  static uint32_t tick_counter = 0;
+  if (tick_counter++ % 1000 == 0 )
+  {
+    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
+  }
+  
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
@@ -223,7 +228,6 @@ void USART2_IRQHandler(void)
 {
   /* USER CODE BEGIN USART2_IRQn 0 */
   
-  USART1_Pkt_Handle();//µ÷ÓÃÒºÀä¿ØÖÆÆ÷´®¿Ú´¦Àíº¯Êý
   /* USER CODE END USART2_IRQn 0 */
   HAL_UART_IRQHandler(&huart2);
   /* USER CODE BEGIN USART2_IRQn 1 */
@@ -236,10 +240,10 @@ void USART2_IRQHandler(void)
   */
 void TIM6_DAC_IRQHandler(void)
 {
-  uint32_t eventTimeer = 0;
   /* USER CODE BEGIN TIM6_DAC_IRQn 0 */
-  if ((eventTimeer++) % 500 == 0){//20HzÒºÀä¿ØÖÆÆ÷¼à¿Ø
-    Cooling_Handle.Run();
+  static uint32_t eventTimer = 0;
+  if ((eventTimer++) % 500 == 0){//20HzÒºÀä¿ØÖÆÆ÷¼à¿Ø
+    Cooling_Handle->Run();
   }
   /* USER CODE END TIM6_DAC_IRQn 0 */
   HAL_TIM_IRQHandler(&htim6);

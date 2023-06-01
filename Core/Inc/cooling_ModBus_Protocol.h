@@ -23,19 +23,19 @@ typedef enum
 
 typedef enum
 {
-    Cooling_STOP     = 0x00,
-    Cooling_GET_STATE    = 0x01,
-    Cooling_CHECK     = 0x02,
-    Cooling_CMD  = 0x03
+    Cooling_STOP        = 0x00,
+    Cooling_GET_STATE   = 0x01,
+    Cooling_CHECK       = 0x02,
+    Cooling_CMD         = 0x03
 } Cooling_StateTypeDef;//状态机定义
 
 typedef enum
 {
-    SYSTEM_ON               = 0x00,
-    SYSTEM_OFF              = 0x01,
-    SYSTEM_GET_DATA         = 0x02,
-    SYSTEM_SET_TEMP_DATA    = 0x03
-} Cooling_OperateTypeDef;//功能码定义
+    SYSTEM_ON               = 0x00,         /*  设置系统开机*/
+    SYSTEM_OFF              = 0x01,         /*  设置系统关机*/
+    SYSTEM_GET_DATA         = 0x02,         /*  获取液冷数据*/
+    SYSTEM_SET_TEMP_DATA    = 0x03          /*  设置目标温度*/
+} Cooling_OperateTypeDef;                   //功能码定义
 
 
 typedef struct
@@ -80,15 +80,15 @@ typedef struct
     Cooling_StatusTypeDef (* Init)();       /*!< 配置用户通讯接口   */
     Cooling_StatusTypeDef (* Run)();        /*!< 启动液冷控制器  建议工作频率20hz   */      
     Cooling_StatusTypeDef (* Stop)();       /*!< 停止液冷控制器     */      
-    Cooling_StatusTypeDef (* RxCplt)();       /*!< 停止液冷控制器     */      
-    void (* UpdataPack)();                  /*!< 通过串口发送modbus命令更新液冷数据寄存器   */      
+    void (* RxCplt)();                      /*!< 液冷控制器接收数据处理     */      
+    Cooling_StatusTypeDef (* UpdataPack)();                  /*!< 通过串口发送modbus命令更新液冷数据寄存器   */      
     
 } Cooling_HandleTypeDef;
 
-extern Cooling_HandleTypeDef Cooling_Handle; //液冷控制器单例对象
-extern Cooling_StatusTypeDef CoolingCreate(UART_HandleTypeDef *huartcooling);
+extern Cooling_HandleTypeDef* Cooling_Handle; //液冷控制器单例对象
+Cooling_StatusTypeDef CoolingCreate( UART_HandleTypeDef *huartcooling);
 
 
-// void Usart1_init(uint32_t bound);         //串口初始化函数
 
 #endif /* __COOLING_MODBUS_PROTOCOL_H */
+

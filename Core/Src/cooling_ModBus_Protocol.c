@@ -39,19 +39,20 @@ uint16_t USART_RX_STA;
 uint8_t aRxBuffer[RXBUFFERSIZE];
 
 Modbus_Report_Pack_TypeDef Modbus_Report_Pack = {0};  //水冷实时数据
-Cooling_HandleTypeDef Cooling_Handle;
+Cooling_HandleTypeDef* Cooling_Handle;
 
 
-const uint8_t aucCoolingCHECKALLCmd[8]  =  {0xAA, 0x03, 0x00, 0x00, 0x00, 0x12, 0xDC, 0x1C};//查询12个寄存器指令
-const uint8_t aucCoolingOFFCmd[8]  =  {0xAA, 0x06, 0x00, 0x00, 0x00, 0x00, 0x90, 0x11};//关机指令
-const uint8_t aucCoolingONCmd[27] =  {0xAA, 0x10, 0x00, 0x00, 0x00, 0x09, 0x12, 0x00, 0x01, 
-                                0x00, 0x64, 0x00, 0x01, 0x00, 0x05, 0x00, 0x00, 0x02, 
-                                0x58, 0x03, 0x20, 0x03, 0x20, 0x01, 0xF4, 0x21, 0x6A}; //开机指令，目标温度10度
-uint8_t aucCooling06Cmd[8]  =  {0xAA, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};//设置指令
-uint8_t aucCooling10Cmd[27] =  {0xAA, 0x10, 0x00, 0x00, 0x00, 0x09, 0x12, 0x00, 0x01, 
-                                0x00, 0x64, 0x00, 0x01, 0x00, 0x05, 0x00, 0x00, 0x02, 
-                                0x58, 0x03, 0x20, 0x03, 0x20, 0x01, 0xF4, 0x00, 0x00}; //开机指令，目标温度10度
-								// 校验结果是6A21 
+uint8_t aucCoolingCHECKALLCmd[8]	=  {0xAA, 0x03, 0x00, 0x00, 0x00, 0x12, 0xDC, 0x1C};//查询12个寄存器指令
+uint8_t aucCoolingOFFCmd[8]		=  {0xAA, 0x06, 0x00, 0x00, 0x00, 0x00, 0x90, 0x11};//关机指令
+uint8_t aucCoolingONCmd[27]		=  {0xAA, 0x10, 0x00, 0x00, 0x00, 0x09, 0x12, 0x00, 0x01, 
+											0x00, 0x64, 0x00, 0x01, 0x00, 0x05, 0x00, 0x00, 0x02, 
+                                			0x58, 0x03, 0x20, 0x03, 0x20, 0x01, 0xF4, 0x21, 0x6A}; //开机指令，目标温度10度
+uint8_t aucCoolingTargTempCmd[8]		=	{0xAA, 0x06, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00};//设置指令
+uint8_t aucCooling06Cmd[8]				=	{0xAA, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};//设置指令
+uint8_t aucCooling10Cmd[27]				=	{0xAA, 0x10, 0x00, 0x00, 0x00, 0x09, 0x12, 0x00, 0x01, 	\
+											0x00, 0x64, 0x00, 0x01, 0x00, 0x05, 0x00, 0x00, 0x02, 	\
+                							0x58, 0x03, 0x20, 0x03, 0x20, 0x01, 0xF4, 0x00, 0x00}; //开机指令，目标温度10度
+											// 校验结果是6A21 
 
 uint8_t modbus_slave_addr = 0xAA; // 从机地址
 uint8_t modbus_Tx_buff[100];	  // 发送缓冲区
@@ -61,7 +62,7 @@ void copyArray(int source[], int target[], int length) {
 }
 
 void aucCooling(){
-    Cooling_Handle.modbus_count++;
+    Cooling_Handle->modbus_count++;
 }
 
 uint8_t auchCRCHi[] = {
@@ -136,7 +137,7 @@ static uint16_t CRC16(uint8_t *puchMsg, uint16_t usDataLen)
 
 static void send_data(uint8_t *buff, uint8_t len)
 {
-	HAL_UART_Transmit_IT(Cooling_Handle.huart, (uint8_t *)buff, len); // 发送数据   把buff
+	HAL_UART_Transmit_IT(Cooling_Handle->huart, (uint8_t *)buff, len); // 发送数据   把buff
 														 // while (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_TC) != SET); // 等待发送结束
 }
 
@@ -155,23 +156,18 @@ static void CoolingOperateGetData(){
 }
 
 static void CoolingOperateSetTemp(uint8_t value){
+	uint16_t crcCheck = 0;
+	aucCoolingTargTempCmd[4] = ((value + 50) * 10) / 256;
+	aucCoolingTargTempCmd[5] = ((value + 50) * 10) % 256;
+	
+	crcCheck = CRC16(aucCoolingTargTempCmd, 6);
+	aucCoolingTargTempCmd[6] = crcCheck / 256;
+	aucCoolingTargTempCmd[7] = crcCheck % 256;
 
-	send_data(aucCooling06Cmd, 27);
+	send_data(aucCoolingTargTempCmd, 8);
 
 }
 
-/**
- * @brief 
- * 
- * @todo 需要解析液冷控制器所绑定的串口
- * @param value 
- */
-void CoolingSendTrace(){
-	if(USART_GetFlagStatus(Cooling_Handle.huart, USART_FLAG_TXE) != RESET)
-		{
-			USART_ITConfig(Cooling_Handle.huart, USART_IT_TXE, ENABLE);
-		}
-}
 
 
 static void CoolingOperate(Cooling_OperateTypeDef operateCMD, uint8_t value){
@@ -201,9 +197,8 @@ static void CoolingOperate(Cooling_OperateTypeDef operateCMD, uint8_t value){
 
 		default:
 			return;
-			break;
+			
 	}
-	CoolingSendTrace();
 }
 
 
@@ -213,58 +208,18 @@ static void CoolingOperate(Cooling_OperateTypeDef operateCMD, uint8_t value){
  */
 static void RxCplt(void)
 {
-	if ((USART_RX_STA & 0x8000) == 0) // ????锟斤拷???
+	if ((USART_RX_STA & 0x8000) == 0) 
 	{
 		modbus_time = 0;
 		USART_RX_BUF[USART_RX_STA & 0X3FFF] = aRxBuffer[0];
 		USART_RX_STA++;
 		if (USART_RX_STA > (USART_REC_LEN - 1))
-			USART_RX_STA = 0; // ???????????,??????????
+			USART_RX_STA = 0; 
 	}
-	HAL_UART_Receive_IT(Cooling_Handle.huart, (uint8_t *)aRxBuffer, 1);
-
+	HAL_UART_Receive_IT(Cooling_Handle->huart, (uint8_t *)aRxBuffer, 1);
+	
 }
 
-
-/*从机端上报策略
-static void modbus_service(void)
-{
-	uint16_t data_CRC_value;   // 从机收到的CRC校验码
-	uint16_t data_len;		   // 从机收到的modbus数据长度
-	uint16_t CRC_check_result; // 从机根据收到的数据计算出来的CRC校验码
-	if (USART_RX_STA & 0x8000) // 串口接收完成的标志
-	{
-		data_len = USART_RX_STA & 0x3fff;                           // 最高两位清零,得到数据长度
-		CRC_check_result = CRC16(USART_RX_BUF, data_len - 2);       // 从机根据收到的数据计算出来的CRC校验码
-		data_CRC_value = USART_RX_BUF[data_len - 1] << 8 
-                        | (((uint16_t)USART_RX_BUF[data_len - 2])); // 对于CRC的接收，先接收低位，再接收高位
-		if ((CRC_check_result == data_CRC_value) && (USART_RX_BUF[0] == modbus_slave_addr))
-		{
-			
-            switch (USART_RX_BUF[1])
-            {
-                case 03: // 读多个寄存器
-                {
-                    modbus_03_function();
-                    break;
-                }
-                case 06: // 写单个寄存器
-                {
-                    modbus_06_function();
-                    break;
-                }
-                case 16: // 写多个寄存器
-                {
-                    modbus_16_function();
-                    break;
-                }
-            }
-			
-		}
-		USART_RX_STA = 0; // 开始下一次接收
-	}
-}
-*/
 
 static void CoolingWorkCMD(){
 	CoolingCount++;
@@ -283,16 +238,7 @@ static void CoolingWorkCMD(){
 	}
 	else if(CoolingCount == 2) //更新频率为20hz时，每1秒触发一次
 	{
-		if(BAT_DATA_Pack.BAT_Temperature > 40)
-		{
-			CoolingOperate(SYSTEM_SET_TEMP_DATA,5);
-		}
-		else if(BAT_DATA_Pack.BAT_Temperature > 30 && BAT_DATA_Pack.BAT_Temperature <= 40)
-		{
-			CoolingOperate(SYSTEM_SET_TEMP_DATA,5);
-		}
-		else if(BAT_DATA_Pack.BAT_Temperature > 25 && BAT_DATA_Pack.BAT_Temperature <= 30)
-		{
+		if(BAT_DATA_Pack.BAT_Temperature > 25){
 			CoolingOperate(SYSTEM_SET_TEMP_DATA,5);
 		}
 		else if(BAT_DATA_Pack.BAT_Temperature > 20 && BAT_DATA_Pack.BAT_Temperature <= 25)
@@ -334,7 +280,7 @@ static void CoolingWorkCMD(){
  *        4. 
  * @param hcooling 
  */
-static void Run(){
+static Cooling_StatusTypeDef Run(){
     static Cooling_StateTypeDef CoolingWorkStatus = Cooling_STOP ;
     if(BAT_DATA_Pack.BatID  > 0){
         switch(CoolingWorkStatus){
@@ -377,6 +323,7 @@ static void Run(){
 		CoolingOperate(SYSTEM_OFF,NULL);
 	
     }
+	return Cooling_OK;
 }
 
 /**
@@ -385,8 +332,9 @@ static void Run(){
  * @todo  暂时无用
  * @param hcooling 
  */
-static void Stop(){
+static Cooling_StatusTypeDef Stop(){
 
+	return Cooling_OK;
 }
 
 /**
@@ -395,14 +343,16 @@ static void Stop(){
  * @todo  初始化所需数据,读取版本号
  *  
  */
-static void Init(){
+static Cooling_StatusTypeDef Init(){
 	USART_RX_STA = 0; // 准备接收
     
 
+	return Cooling_OK;
 }
 
-static void UpdataPack(){
+static Cooling_StatusTypeDef UpdataPack(){
 
+	return Cooling_OK;
 }
 
 
@@ -412,15 +362,16 @@ static void UpdataPack(){
  * @todo  串口绑定方式待定
  * @param huartcooling:绑定收发数据接口
  */
-Cooling_StatusTypeDef CoolingCreate(UART_HandleTypeDef *huartcooling)
+Cooling_StatusTypeDef CoolingCreate( UART_HandleTypeDef *huartcooling)
 {
-	Cooling_Handle.Run          = Run;
-    Cooling_Handle.Stop         = Stop;
-    Cooling_Handle.Init         = Init;
-    Cooling_Handle.UpdataPack   = UpdataPack;
-    Cooling_Handle.RxCplt   		= RxCplt;
+
+	Cooling_Handle->Run          = Run;
+	Cooling_Handle->Stop         = Stop;
+	Cooling_Handle->Init         = Init;
+	Cooling_Handle->UpdataPack   = UpdataPack;
+	Cooling_Handle->RxCplt   	= RxCplt;
 	
-	Cooling_Handle.huart = huartcooling;
+	Cooling_Handle->huart = huartcooling;
 	
 	return Cooling_OK;
 }
