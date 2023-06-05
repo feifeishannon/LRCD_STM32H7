@@ -19,6 +19,7 @@ typedef struct
 } BAT_DATA_Pack_TypeDef;
 
 extern BAT_DATA_Pack_TypeDef BAT_DATA_Pack;
+void BATinit(void);
 
 
 #endif //__TEST_H
