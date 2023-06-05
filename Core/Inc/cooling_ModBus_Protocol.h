@@ -7,7 +7,8 @@
 #include "stdint.h"
 #include "stm32h7xx_hal.h"
 #include "test.h"   // 测试文件，模拟线圈数据来源，发布前应使用实体数据替换
-#include <string.h>
+#include <stdlib.h>
+
 
 typedef unsigned int       uint32_t; 		// 消除vscode异常提示
 #define USART_REC_LEN  			200  		// 定义最大接收字节数 200
@@ -19,6 +20,12 @@ typedef enum
     Cooling_ERROR    = 0x01,
     Cooling_BUSY     = 0x02,
     Cooling_TIMEOUT  = 0x03
+} Cooling_FunStatusTypeDef;//函数执行状态
+
+typedef enum
+{
+    Cooling_Null       = 0x00,
+    Cooling_Inited     = 0x01
 } Cooling_StatusTypeDef;//函数执行状态
 
 typedef enum
@@ -37,7 +44,7 @@ typedef enum
     SYSTEM_SET_TEMP_DATA    = 0x03          /*  设置目标温度*/
 } Cooling_OperateTypeDef;                   //功能码定义
 
-
+#pragma pack(1)
 typedef struct
 {
     uint16_t CoolingRunState;       //0x0000 制冷开机/关机
@@ -61,7 +68,7 @@ typedef struct
     uint16_t CoolRevsionLow;        //0x0012 低版本号
     uint16_t CoolRevsionHigh;       //0x0013 高版本号
 } Modbus_Report_Pack_TypeDef;
-
+#pragma pack()
 
 /**
  * @brief 实体调试需判定对齐规则
@@ -76,17 +83,17 @@ typedef struct
     uint8_t modbus_count;
     uint16_t coolingPSD;
     // char *info[1000];                       /* 液冷控制器信息描述,1k缓存*/
-    
-    Cooling_StatusTypeDef (* Init)();       /*!< 配置用户通讯接口   */
-    Cooling_StatusTypeDef (* Run)();        /*!< 启动液冷控制器  建议工作频率20hz   */      
-    Cooling_StatusTypeDef (* Stop)();       /*!< 停止液冷控制器     */      
+    Cooling_StatusTypeDef coolingSYSstatus;
+    Cooling_FunStatusTypeDef (* Init)();       /*!< 配置用户通讯接口   */
+    Cooling_FunStatusTypeDef (* Run)();        /*!< 启动液冷控制器  建议工作频率20hz   */      
+    Cooling_FunStatusTypeDef (* Stop)();       /*!< 停止液冷控制器     */      
     void (* RxCplt)();                      /*!< 液冷控制器接收数据处理     */      
-    Cooling_StatusTypeDef (* UpdataPack)();                  /*!< 通过串口发送modbus命令更新液冷数据寄存器   */      
+    Cooling_FunStatusTypeDef (* UpdataPack)();                  /*!< 通过串口发送modbus命令更新液冷数据寄存器   */      
     
 } Cooling_HandleTypeDef;
 
 extern Cooling_HandleTypeDef* Cooling_Handle; //液冷控制器单例对象
-Cooling_StatusTypeDef CoolingCreate( UART_HandleTypeDef *huartcooling);
+Cooling_FunStatusTypeDef CoolingCreate( UART_HandleTypeDef *huartcooling);
 
 
 
