@@ -136,7 +136,7 @@ static uint16_t CRC16(uint8_t *puchMsg, uint16_t usDataLen)
 
 static void send_data(uint8_t *buff, uint8_t len)
 {
-	// HAL_UART_Transmit_IT(Cooling_Handle->huart, (uint8_t *)buff, len); // 发送数据   把buff
+	HAL_UART_Transmit_IT(Cooling_Handle->huart, (uint8_t *)buff, len); // 发送数据   把buff
 														 // while (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_TC) != SET); // 等待发送结束
 }
 
@@ -200,18 +200,96 @@ static void CoolingOperate(Cooling_OperateTypeDef operateCMD, uint8_t value){
 	}
 }
 
+static void	updataPSD(){
+	uint8_t	index=0;
+	uint8_t	bitindex=0;
+	if(Cooling_Handle->modbusReport.PSD & (1 << index++)){//水位报警
+		//水位有三个状态
+		Cooling_Handle->Cooling_PSD.CoolingLiquidLevelERR = Cooling_Handle->modbusReport.liquidheight;
+		Cooling_Handle->Cooling_PSD.CoolingERRflag |= (1 << bitindex++);
+	}else{
+		Cooling_Handle->Cooling_PSD.CoolingLiquidLevelERR = 0;
+		Cooling_Handle->Cooling_PSD.CoolingERRflag &= ~(1 << bitindex++);
+	}
 
-static void modbus_03_function(void)
+	if(Cooling_Handle->modbusReport.PSD & (1 << index++)){//水流报警
+		Cooling_Handle->Cooling_PSD.CoolingPumpFlowERR = 1;
+		Cooling_Handle->Cooling_PSD.CoolingERRflag |= (1 << bitindex++);
+	}else{
+		Cooling_Handle->Cooling_PSD.CoolingPumpFlowERR = 0;
+		Cooling_Handle->Cooling_PSD.CoolingERRflag &= ~(1 << bitindex++);
+	}
+
+	if(Cooling_Handle->modbusReport.PSD & (1 << index++)){//高温报警
+		Cooling_Handle->Cooling_PSD.CoolingHighTempERR = 1;
+		Cooling_Handle->Cooling_PSD.CoolingERRflag |= (1 << bitindex++);
+	}else{
+		Cooling_Handle->Cooling_PSD.CoolingHighTempERR = 0;
+		Cooling_Handle->Cooling_PSD.CoolingERRflag &= ~(1 << bitindex++);
+	}
+
+	if(Cooling_Handle->modbusReport.PSD & (1 << index++)){//低温报警
+		Cooling_Handle->Cooling_PSD.CoolingLowTempERR = 1;
+		Cooling_Handle->Cooling_PSD.CoolingERRflag |= (1 << bitindex++);
+	}else{
+		Cooling_Handle->Cooling_PSD.CoolingLowTempERR = 0;
+		Cooling_Handle->Cooling_PSD.CoolingERRflag &= ~(1 << bitindex++);
+	}
+
+	if(Cooling_Handle->modbusReport.PSD & (1 << index++)){//热端报警
+		Cooling_Handle->Cooling_PSD.CoolingHotSideERR = 1;
+		Cooling_Handle->Cooling_PSD.CoolingERRflag |= (1 << bitindex++);
+	}else{
+		Cooling_Handle->Cooling_PSD.CoolingHotSideERR = 0;
+		Cooling_Handle->Cooling_PSD.CoolingERRflag &= ~(1 << bitindex++);
+	}
+
+	if(Cooling_Handle->modbusReport.PSD & (1 << index++)){//水泵报警
+		Cooling_Handle->Cooling_PSD.CoolingPumpERR = 1;
+		Cooling_Handle->Cooling_PSD.CoolingERRflag |= (1 << bitindex++);
+	}else{
+		Cooling_Handle->Cooling_PSD.CoolingPumpERR = 0;
+		Cooling_Handle->Cooling_PSD.CoolingERRflag &= ~(1 << bitindex++);
+	}
+
+	if(Cooling_Handle->modbusReport.PSD & (1 << index++)){//风扇报警
+		Cooling_Handle->Cooling_PSD.CoolingFanERR = 1;
+		Cooling_Handle->Cooling_PSD.CoolingERRflag |= (1 << bitindex++);
+	}else{
+		Cooling_Handle->Cooling_PSD.CoolingFanERR = 0;
+		Cooling_Handle->Cooling_PSD.CoolingERRflag &= ~(1 << bitindex++);
+	}
+	
+	if(Cooling_Handle->modbusReport.PSD & (1 << index++)){//制冷开关
+		Cooling_Handle->Cooling_PSD.CoolingRunState = 1;
+		Cooling_Handle->Cooling_PSD.CoolingERRflag |= (1 << bitindex++);
+	}else{
+		Cooling_Handle->Cooling_PSD.CoolingRunState = 0;
+		Cooling_Handle->Cooling_PSD.CoolingERRflag &= ~(1 << bitindex++);
+	}
+
+}
+
+static void modbus_03_Receivefunction(uint8_t data_len)
 {
 	uint16_t value;
 	uint16_t * ptr;
-	for (size_t i = 0; i < 12; i++)
+	
+	for (size_t i = 0; i < 20; i++)
 	{
-		value = (uint16_t)((USART_RX_BUF[i * 2  + 3 + 1] << 8) | USART_RX_BUF[i * 2 + 3]);
-        ptr = (uint16_t*)&(Cooling_Handle->modbusReport);
-        ptr[i] = value;
+		
+		value = (uint16_t)((USART_RX_BUF[i * 2  + 3 ] << 8) | USART_RX_BUF[i * 2 + 3 + 1]);
+		ptr = (uint16_t*)&(Cooling_Handle->modbusReport);
+		ptr[i] = value;
 		
 	}
+	if(data_len<42)
+	{
+		Cooling_Handle->modbusReport.CoolRevsionYear = 0;	
+		Cooling_Handle->modbusReport.CoolRevsionMoDa = 0;	
+	}
+	updataPSD();
+	
 	
 }
 
@@ -231,7 +309,7 @@ static void CoolingModbus_service(){
 				{
 				case 03: 
 				{
-					modbus_03_function();
+					modbus_03_Receivefunction(data_len);
 					break;
 				}
 				case 06: 
@@ -403,7 +481,7 @@ static Cooling_FunStatusTypeDef Init(){
 }
 
 static Cooling_FunStatusTypeDef UpdataPack(){
-	//Cooling_Handle->modbus_count++;
+
 	if(Cooling_Handle->modbus_count > 4 && ((USART_RX_STA & 0X3FFF) != 0)){
 		USART_RX_STA |= 0x8000;
 		CoolingModbus_service();

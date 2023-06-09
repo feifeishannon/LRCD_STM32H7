@@ -9,6 +9,8 @@
 #include "test.h"   // 测试文件，模拟线圈数据来源，发布前应使用实体数据替换
 #include <stdlib.h>
 
+// AA 03 00 00 00 12 DC 1C 
+// AA 03 24 00 01 00 64 00 01 00 05 00 00 02 58 03 20 03 20 01 F4 01 C5 01 C6 01 C5 00 00 00 00 00 00 00 00 00 03 00 08 51 0B
 
 typedef unsigned int       uint32_t; 		// 消除vscode异常提示
 #define USART_REC_LEN  			200  		// 定义最大接收字节数 200
@@ -65,10 +67,27 @@ typedef struct
     uint16_t WaterPumpFlowRate;     //0x000F 水泵流量
     uint16_t liquidheight;          //0x0010 液位高度
     uint16_t PSD;                   //0x0011 寄存器状态
-    uint16_t CoolRevsionLow;        //0x0012 低版本号
-    uint16_t CoolRevsionHigh;       //0x0013 高版本号
+    uint16_t CoolRevsionYear;       //0x0012 年版本号
+    uint16_t CoolRevsionMoDa;       //0x0013 月日版本号
 } Modbus_Report_Pack_TypeDef;
 #pragma pack()
+
+
+#pragma pack(1)
+typedef struct
+{
+    uint8_t CoolingRunState;        //0x0000 开机/关机
+    uint8_t CoolingFanERR ;         //0x0001 风扇报警
+    uint8_t CoolingPumpERR;         //0x0002 水泵报警
+    uint8_t CoolingHotSideERR;      //0x0003 热端报警
+    uint8_t CoolingLowTempERR;      //0x0004 低温报警
+    uint8_t CoolingHighTempERR;     //0x0005 高温报警
+    uint8_t CoolingPumpFlowERR;     //0x0006 流速报警
+    uint8_t CoolingLiquidLevelERR;  //0x0007 液位报警
+    uint8_t CoolingERRflag;         //0x0008 液冷故障
+} Cooling_PSD_TypeDef;
+#pragma pack()
+
 
 /**
  * @brief 实体调试需判定对齐规则
@@ -78,10 +97,10 @@ typedef struct
 {
     Modbus_Report_Pack_TypeDef modbusReport;
     UART_HandleTypeDef *huart;
+    Cooling_PSD_TypeDef Cooling_PSD;
     float currentTemperature;
     float targetTemperature;
     uint8_t modbus_count;
-    uint16_t coolingPSD;
     // char *info[1000];                       /* 液冷控制器信息描述,1k缓存*/
     Cooling_StatusTypeDef coolingSYSstatus;
     Cooling_FunStatusTypeDef (* Init)();       /*!< 配置用户通讯接口   */

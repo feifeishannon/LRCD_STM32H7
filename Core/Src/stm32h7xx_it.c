@@ -192,6 +192,7 @@ void SysTick_Handler(void)
   {
     HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
   }
+  if(Cooling_Handle->modbus_count++>10)Cooling_Handle->modbus_count=10;
   
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
