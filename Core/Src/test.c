@@ -2,6 +2,7 @@
 
 #include "test.h"
 
+// 模拟线圈数据
 BAT_DATA_Pack_TypeDef BAT_DATA_Pack;
 
 void BATinit(void){
